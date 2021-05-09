@@ -5,6 +5,8 @@ import 'package:flutter/rendering.dart';
 
 import '../constants.dart';
 
+User loggedInUser;
+
 class ChatScreen extends StatefulWidget {
   static const String id = 'chat_screen';
 
@@ -16,7 +18,8 @@ class _ChatScreenState extends State<ChatScreen> {
   final _auth = FirebaseAuth.instance;
   final _fireStore = FirebaseFirestore.instance;
   final messagetextController = TextEditingController();
-  User loggedInUser;
+
+  // User loggedInUser;
 
   String messageText;
 
@@ -118,48 +121,66 @@ class MessageStream extends StatelessWidget {
                 child: CircularProgressIndicator(
               backgroundColor: Colors.lightBlueAccent,
             ));
-          }
+          } else if (snapshot.hasData) {
+            final messages = snapshot.data.docs.reversed;
+            List<MessageBubble> messageBubbles = [];
+            for (var message in messages) {
+              final messageText = message['text'];
+              final messageSender = message['sender'];
 
-          if (snapshot.hasData) {
-            return ListView.builder(
-              shrinkWrap: true,
-              itemCount: snapshot.data.docs.length,
-              itemBuilder: (context, index) {
-                final message = snapshot.data.docs[index];
+              final currentUser = loggedInUser.email;
 
-                return MessageBubble(
-                    messageText: message['text'], sender: message['sender']);
+              final messageBubble = MessageBubble(
+                sender: messageSender,
+                messageText: messageText,
+                isMe: currentUser == messageSender,
+              );
 
-                // return Column(
-                //   children: [
-                //     Text(message['sender'].toString()),
-                //     Text(message['text'].toString()),
-                //   ],
-                // );
-              },
+              messageBubbles.add(messageBubble);
+            }
+            return Expanded(
+              child: ListView(
+                reverse: true,
+                padding: EdgeInsets.symmetric(horizontal: 10.0, vertical: 20.0),
+                children: messageBubbles,
+              ),
             );
+          } else {
+            return Center(child: Text('no chat yet'));
           }
         });
   }
 }
 
 class MessageBubble extends StatelessWidget {
-  MessageBubble({this.sender, this.messageText});
+  MessageBubble({this.sender, this.messageText, this.isMe});
+
   final String sender;
   final String messageText;
+  final bool isMe;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment:
+            isMe == true ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
           Text(sender, style: TextStyle(fontSize: 12.0, color: Colors.black54)),
           Material(
             elevation: 5,
-            borderRadius: BorderRadius.circular(30),
-            color: Colors.lightBlueAccent,
+            borderRadius: isMe == true
+                ? BorderRadius.only(
+                    topLeft: Radius.circular(30),
+                    bottomLeft: Radius.circular(30),
+                    bottomRight: Radius.circular(30))
+                : BorderRadius.only(
+                    topRight: Radius.circular(30),
+                    bottomLeft: Radius.circular(30),
+                    bottomRight: Radius.circular(30),
+                  ),
+            color: isMe == true ? Colors.lightBlueAccent : Colors.red,
             child: Padding(
               padding:
                   const EdgeInsets.symmetric(vertical: 10.0, horizontal: 20.0),
